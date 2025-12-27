@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WHITE PALETTE</title>
+    <style>
+        :root {
+            --bg: #f0f0f2;
+            --canvas-bg: #ffffff;
+            --accent: #1a1a1a;
+            --text: #333;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 15px 0;
+            text-align: center;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.2rem;
+            font-weight: 200;
+            letter-spacing: 5px;
+            margin: 0;
+        }
+
+        #stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+            background: var(--canvas-bg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            width: 100%;
+            padding: 20px 10px calc(20px + env(safe-area-inset-bottom));
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        .btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--text);
+            cursor: pointer;
+            gap: 5px;
+        }
+
+        .btn-icon {
+            width: 44px;
+            height: 44px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.2s;
+        }
+
+        .btn:active .btn-icon {
+            transform: scale(0.9);
+            background: #eee;
+        }
+
+        .btn-primary .btn-icon {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        #fileInput { display: none; }
+
+        .guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ccc;
+            pointer-events: none;
+            text-align: center;
+            width: 80%;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>WHITE PALETTE</h1>
+</header>
+
+<div id="stage">
+    <div class="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+        <div id="guideText" class="guide">
+            <p style="font-size: 24px; margin-bottom: 5px;">＋</p>
+            <p>タップして写真を追加</p>
+        </div>
+    </div>
+</div>
+
+<div class="controls">
+    <label class="btn btn-primary">
+        <div class="btn-icon">＋</div>
+        <span>追加</span>
+        <input type="file" id="fileInput" accept="image/*" multiple>
+    </label>
+    
+    <button class="btn" id="saveBtn">
+        <div class="btn-icon">↓</div>
+        <span>保存</span>
+    </button>
+
+    <button class="btn" id="tweetBtn">
+        <div class="btn-icon">𝕏</div>
+        <span>投稿</span>
+    </button>
+
+    <button class="btn" id="clearBtn">
+        <div class="btn-icon">×</div>
+        <span>消去</span>
+    </button>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const fileInput = document.getElementById('fileInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const tweetBtn = document.getElementById('tweetBtn');
+    const guideText = document.getElementById('guideText');
+
+    const RESOLUTION = 1200;
+    canvas.width = RESOLUTION;
+    canvas.height = RESOLUTION;
+
+    let grid = [];
+    const gridSize = 4;
+
+    function init() {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, RESOLUTION, RESOLUTION);
+        
+        grid = [];
+        const step = RESOLUTION / gridSize;
+        for(let y=0; y<gridSize; y++) {
+            for(let x=0; x<gridSize; x++) {
+                grid.push({
+                    x: x * step + step/2,
+                    y: y * step + step/2
+                });
+            }
+        }
+		
+        grid.sort(() => Math.random() - 0.5);
+        guideText.style.display = 'block';
+    }
+
+    init();
+
+    fileInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        if(files.length > 0) guideText.style.display = 'none';
+        
+        for (const file of files) {
+            await processFile(file);
+        }
+        fileInput.value = "";
+    });
+
+    function processFile(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    drawPhoto(img);
+                    resolve();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function drawPhoto(img) {
+        let x, y;
+        if(grid.length > 0) {
+            const point = grid.shift();
+            x = point.x + (Math.random() - 0.5) * 150;
+            y = point.y + (Math.random() - 0.5) * 150;
+        } else {
+            x = Math.random() * RESOLUTION;
+            y = Math.random() * RESOLUTION;
+        }
+
+        const scale = (Math.random() * 0.1) + 0.3;
+        const w = RESOLUTION * scale;
+        const h = (img.height / img.width) * w;
+        const angle = (Math.random() - 0.5) * 0.5;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        ctx.shadowColor = 'rgba(0,0,0,0.1)';
+        ctx.shadowBlur = 20;
+        const border = w * 0.04;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-w/2 - border, -h/2 - border, w + border*2, h + border*2);
+
+        ctx.drawImage(img, -w/2, -h/2, w, h);
+        ctx.restore();
+    }
+
+    saveBtn.onclick = () => {
+        const link = document.createElement('a');
+        link.download = 'YearInReview.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        alert('画像を保存しました。');
+    };
+
+    tweetBtn.onclick = () => {
+        const text = encodeURIComponent("今年の一年をまとめました。 #WhitePalette");
+        window.open(`https://twitter.com/intent/tweet?text=${text}`);
+    };
+
+    clearBtn.onclick = () => {
+        if(confirm('パレットをリセットしますか？')) init();
+    };
+</script>
+
+</body>
+</html>
