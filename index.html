@@ -6,37 +6,42 @@
     <title>WHITE PALETTE</title>
     <style>
         :root {
-            --bg: #f0f0f2;
+            --bg: #f8f9fa;
             --canvas-bg: #ffffff;
             --accent: #1a1a1a;
             --text: #333;
+            --border: #e0e0e0;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+        }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
-            align-items: center;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
         }
 
         header {
-            padding: 15px 0;
+            padding: 10px 0;
             text-align: center;
-            width: 100%;
+            flex-shrink: 0;
         }
         h1 {
-            font-size: 1.2rem;
-            font-weight: 200;
-            letter-spacing: 5px;
+            font-size: 0.9rem;
+            font-weight: 300;
+            letter-spacing: 4px;
             margin: 0;
+            color: #888;
         }
 
         #stage {
@@ -44,35 +49,49 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 15px;
+            min-height: 0;
+        }
+
+        .canvas-outer {
             width: 100%;
-            padding: 10px;
-            overflow: hidden;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .canvas-container {
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
+            max-height: 100%;
             aspect-ratio: 1 / 1;
             background: var(--canvas-bg);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
             position: relative;
+            cursor: pointer;
         }
 
         canvas {
             width: 100% !important;
             height: 100% !important;
             display: block;
+            object-fit: contain;
         }
 
         .controls {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             width: 100%;
-            padding: 20px 10px calc(20px + env(safe-area-inset-bottom));
+            padding: 15px 10px calc(15px + env(safe-area-inset-bottom));
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            border-top: 1px solid #ddd;
+            gap: 12px;
+            border-top: 1px solid var(--border);
+            max-width: 600px;
+            margin: 0 auto;
+            flex-shrink: 0;
         }
 
         .btn {
@@ -83,28 +102,29 @@
             background: none;
             border: none;
             font-size: 10px;
-            font-weight: bold;
+            font-weight: 600;
             color: var(--text);
             cursor: pointer;
-            gap: 5px;
+            gap: 6px;
+            padding: 0;
         }
 
         .btn-icon {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             background: white;
-            border: 1px solid #ddd;
-            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .btn:active .btn-icon {
-            transform: scale(0.9);
-            background: #eee;
+            transform: scale(0.92);
+            background: #f0f0f0;
         }
 
         .btn-primary .btn-icon {
@@ -120,10 +140,23 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #ccc;
+            color: #bbb;
             pointer-events: none;
             text-align: center;
             width: 80%;
+            transition: opacity 0.3s;
+        }
+        
+        .guide p { margin: 5px 0; font-size: 13px; }
+
+        @media (min-width: 768px) {
+            .btn-icon:hover {
+                background: #f8f8f8;
+                border-color: #bbb;
+            }
+            .btn-primary .btn-icon:hover {
+                background: #333;
+            }
         }
     </style>
 </head>
@@ -134,11 +167,13 @@
 </header>
 
 <div id="stage">
-    <div class="canvas-container">
-        <canvas id="mainCanvas"></canvas>
-        <div id="guideText" class="guide">
-            <p style="font-size: 24px; margin-bottom: 5px;">＋</p>
-            <p>タップして写真を追加</p>
+    <div class="canvas-outer">
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="mainCanvas"></canvas>
+            <div id="guideText" class="guide">
+                <p style="font-size: 32px; font-weight: 100;">＋</p>
+                <p>写真をアップロード</p>
+            </div>
         </div>
     </div>
 </div>
@@ -174,6 +209,7 @@
     const clearBtn = document.getElementById('clearBtn');
     const tweetBtn = document.getElementById('tweetBtn');
     const guideText = document.getElementById('guideText');
+    const canvasContainer = document.getElementById('canvasContainer');
 
     const RESOLUTION = 1200;
     canvas.width = RESOLUTION;
@@ -198,14 +234,18 @@
         }
 		
         grid.sort(() => Math.random() - 0.5);
-        guideText.style.display = 'block';
+        guideText.style.opacity = '1';
     }
 
     init();
 
+    canvasContainer.onclick = (e) => {
+        if(e.target !== fileInput) fileInput.click();
+    };
+
     fileInput.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files);
-        if(files.length > 0) guideText.style.display = 'none';
+        if(files.length > 0) guideText.style.opacity = '0';
         
         for (const file of files) {
             await processFile(file);
@@ -232,46 +272,52 @@
         let x, y;
         if(grid.length > 0) {
             const point = grid.shift();
-            x = point.x + (Math.random() - 0.5) * 150;
-            y = point.y + (Math.random() - 0.5) * 150;
+            x = point.x + (Math.random() - 0.5) * (RESOLUTION/gridSize * 0.8);
+            y = point.y + (Math.random() - 0.5) * (RESOLUTION/gridSize * 0.8);
         } else {
             x = Math.random() * RESOLUTION;
             y = Math.random() * RESOLUTION;
         }
 
-        const scale = (Math.random() * 0.1) + 0.3;
+        const scale = (Math.random() * 0.15) + 0.3;
         const w = RESOLUTION * scale;
         const h = (img.height / img.width) * w;
-        const angle = (Math.random() - 0.5) * 0.5;
+        const angle = (Math.random() - 0.5) * 0.6;
 
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-
-        ctx.shadowColor = 'rgba(0,0,0,0.1)';
-        ctx.shadowBlur = 20;
+		
+        ctx.shadowColor = 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 5;
+        
         const border = w * 0.04;
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(-w/2 - border, -h/2 - border, w + border*2, h + border*2);
 
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
         ctx.drawImage(img, -w/2, -h/2, w, h);
         ctx.restore();
     }
 
-    saveBtn.onclick = () => {
+    saveBtn.onclick = (e) => {
+        e.stopPropagation();
         const link = document.createElement('a');
-        link.download = 'YearInReview.png';
+        link.download = 'WhitePalette.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
-        alert('画像を保存しました。');
     };
 
-    tweetBtn.onclick = () => {
+    tweetBtn.onclick = (e) => {
+        e.stopPropagation();
         const text = encodeURIComponent("今年の一年をまとめました。 #WhitePalette");
         window.open(`https://twitter.com/intent/tweet?text=${text}`);
     };
 
-    clearBtn.onclick = () => {
+    clearBtn.onclick = (e) => {
+        e.stopPropagation();
         if(confirm('パレットをリセットしますか？')) init();
     };
 </script>
